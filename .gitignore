@@ -1,0 +1,18 @@
+# Build and runtime outputs
+output/
+dist/
+build/
+*.pyc
+__pycache__/
+.DS_Store
+
+# Test reports
+test-results/
+coverage/
+
+# Temporary and local editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
