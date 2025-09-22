@@ -147,6 +147,137 @@ package stencil.geom
             return new Bezier2D(c0, c1, c2, c3);
         }
 
+        /**
+         * Splits curve into two sub-curves at parameter t using de Casteljau's algorithm.
+         * Returns an object { left: Bezier2D, right: Bezier2D }.
+         */
+        public function splitAt(t:Number):Object
+        {
+            if (order == 2)
+            {
+                var q01:Point2D = p0.lerp(p1, t);
+                var q12:Point2D = p1.lerp(p2, t);
+                var mid2:Point2D = q01.lerp(q12, t);
+
+                var left2:Bezier2D = new Bezier2D(p0, q01, mid2);
+                var right2:Bezier2D = new Bezier2D(mid2, q12, p2);
+                return { left: left2, right: right2 };
+            }
+            else
+            {
+                var c01:Point2D = p0.lerp(p1, t);
+                var c12:Point2D = p1.lerp(p2, t);
+                var c23:Point2D = p2.lerp(p3, t);
+
+                var c012:Point2D = c01.lerp(c12, t);
+                var c123:Point2D = c12.lerp(c23, t);
+
+                var mid3:Point2D = c012.lerp(c123, t);
+
+                var left3:Bezier2D = new Bezier2D(p0, c01, c012, mid3);
+                var right3:Bezier2D = new Bezier2D(mid3, c123, c23, p3);
+                return { left: left3, right: right3 };
+            }
+        }
+
+        /**
+         * Recursively flattens curve into a polyline within a specified flatness tolerance.
+         * Flatness is measured as maximum distance from control points to the chord line.
+         */
+        public function flatten(tolerance:Number = 0.5):Array
+        {
+            var points:Array = [];
+            points.push(p0.clone() as Point2D);
+            flattenInternal(this, tolerance, points, 0, 16);
+            points.push((order == 3 ? p3 : p2).clone() as Point2D);
+            return points;
+        }
+
+        private static function flattenInternal(
+            curve:Bezier2D,
+            tol:Number,
+            outPoints:Array,
+            depth:int,
+            maxDepth:int
+        ):void
+        {
+            if (depth >= maxDepth || curve.isFlat(tol))
+            {
+                return;
+            }
+
+            var parts:Object = curve.splitAt(0.5);
+            var left:Bezier2D = parts.left as Bezier2D;
+            var right:Bezier2D = parts.right as Bezier2D;
+
+            flattenInternal(left, tol, outPoints, depth + 1, maxDepth);
+            outPoints.push((left.order == 3 ? left.p3 : left.p2).clone() as Point2D);
+            flattenInternal(right, tol, outPoints, depth + 1, maxDepth);
+        }
+
+        /**
+         * Checks if control points are within tolerance distance of the chord (p0 to end).
+         */
+        public function isFlat(tolerance:Number):Boolean
+        {
+            var endPoint:Point2D = (order == 3) ? p3 : p2;
+            var chordDx:Number = endPoint.x - p0.x;
+            var chordDy:Number = endPoint.y - p0.y;
+            var chordLenSq:Number = chordDx * chordDx + chordDy * chordDy;
+
+            if (MathUtil.fuzzyZero(chordLenSq))
+            {
+                return p0.distanceTo(p1) <= tolerance;
+            }
+
+            var d1:Number = pointLineDistance(p1, p0, endPoint, chordDx, chordDy, chordLenSq);
+            if (d1 > tolerance) return false;
+
+            if (order == 3)
+            {
+                var d2:Number = pointLineDistance(p2, p0, endPoint, chordDx, chordDy, chordLenSq);
+                if (d2 > tolerance) return false;
+            }
+
+            return true;
+        }
+
+        private static function pointLineDistance(
+            pt:Point2D,
+            lineStart:Point2D,
+            lineEnd:Point2D,
+            dx:Number,
+            dy:Number,
+            lenSq:Number
+        ):Number
+        {
+            var num:Number = Math.abs(dy * pt.x - dx * pt.y + lineEnd.x * lineStart.y - lineEnd.y * lineStart.x);
+            return num / Math.sqrt(lenSq);
+        }
+
+        /**
+         * Computes arc length from t = 0 to t = 1 using 5-point Gauss-Legendre quadrature.
+         */
+        public function arcLength(t0:Number = 0.0, t1:Number = 1.0):Number
+        {
+            // 5-point Gauss-Legendre abscissae and weights on [-1, 1]
+            var weights:Array = [0.5688888888888889, 0.4786286704993665, 0.4786286704993665, 0.2369268850561891, 0.2369268850561891];
+            var abscissae:Array = [0.0, -0.5384693101056831, 0.5384693101056831, -0.9061798459386640, 0.9061798459386640];
+
+            var halfRange:Number = (t1 - t0) * 0.5;
+            var mid:Number = (t0 + t1) * 0.5;
+            var sum:Number = 0.0;
+
+            for (var i:int = 0; i < 5; i++)
+            {
+                var t:Number = mid + halfRange * abscissae[i];
+                var d:Vector2D = derivative(t);
+                sum += weights[i] * d.magnitude;
+            }
+
+            return sum * halfRange;
+        }
+
         public function clone():Object
         {
             return new Bezier2D(p0, p1, p2, p3);
