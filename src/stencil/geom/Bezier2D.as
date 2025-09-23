@@ -278,6 +278,116 @@ package stencil.geom
             return sum * halfRange;
         }
 
+        /**
+         * Computes second derivative vector B''(t).
+         */
+        public function secondDerivative(t:Number):Vector2D
+        {
+            if (order == 2)
+            {
+                // B''(t) = 2*(p2 - 2*p1 + p0)
+                var ddx2:Number = 2.0 * (p2.x - 2.0 * p1.x + p0.x);
+                var ddy2:Number = 2.0 * (p2.y - 2.0 * p1.y + p0.y);
+                return new Vector2D(ddx2, ddy2);
+            }
+            else
+            {
+                // B''(t) = 6*(1-t)*(p2 - 2*p1 + p0) + 6*t*(p3 - 2*p2 + p1)
+                var u:Number = 1.0 - t;
+                var ddx3:Number = 6.0 * u * (p2.x - 2.0 * p1.x + p0.x) + 6.0 * t * (p3.x - 2.0 * p2.x + p1.x);
+                var ddy3:Number = 6.0 * u * (p2.y - 2.0 * p1.y + p0.y) + 6.0 * t * (p3.y - 2.0 * p2.y + p1.y);
+                return new Vector2D(ddx3, ddy3);
+            }
+        }
+
+        /**
+         * Computes signed curvature kappa(t) = (x' * y'' - y' * x'') / (x'^2 + y'^2)^(3/2).
+         */
+        public function curvature(t:Number):Number
+        {
+            var d1:Vector2D = derivative(t);
+            var d2:Vector2D = secondDerivative(t);
+
+            var numerator:Number = d1.dx * d2.dy - d1.dy * d2.dx;
+            var denomBase:Number = d1.dx * d1.dx + d1.dy * d1.dy;
+
+            if (MathUtil.fuzzyZero(denomBase))
+            {
+                return 0.0;
+            }
+
+            return numerator / Math.pow(denomBase, 1.5);
+        }
+
+        /**
+         * Computes exact tight bounding box by evaluating curve at t=0, t=1, and all derivative roots in (0, 1).
+         */
+        public function bounds():Rect2D
+        {
+            var testT:Array = [0.0, 1.0];
+
+            if (order == 2)
+            {
+                // Quadratic derivative: 2*(1-t)*(p1 - p0) + 2*t*(p2 - p1) = 0
+                // (p0 - 2*p1 + p2)*t + (p1 - p0) = 0
+                var denomX:Number = p0.x - 2.0 * p1.x + p2.x;
+                if (!MathUtil.fuzzyZero(denomX))
+                {
+                    var tx:Number = (p0.x - p1.x) / denomX;
+                    if (tx > 0.0 && tx < 1.0) testT.push(tx);
+                }
+
+                var denomY:Number = p0.y - 2.0 * p1.y + p2.y;
+                if (!MathUtil.fuzzyZero(denomY))
+                {
+                    var ty:Number = (p0.y - p1.y) / denomY;
+                    if (ty > 0.0 && ty < 1.0) testT.push(ty);
+                }
+            }
+            else
+            {
+                // Cubic derivative: 3*(1-t)^2*(p1-p0) + 6*(1-t)*t*(p2-p1) + 3*t^2*(p3-p2) = 0
+                // a*t^2 + b*t + c = 0
+                // a = 3*(p3 - 3*p2 + 3*p1 - p0)
+                // b = 6*(p2 - 2*p1 + p0)
+                // c = 3*(p1 - p0)
+                var ax:Number = 3.0 * (p3.x - 3.0 * p2.x + 3.0 * p1.x - p0.x);
+                var bx:Number = 6.0 * (p2.x - 2.0 * p1.x + p0.x);
+                var cx:Number = 3.0 * (p1.x - p0.x);
+                var rootsX:Array = MathUtil.solveQuadratic(ax, bx, cx);
+                for (var i:int = 0; i < rootsX.length; i++)
+                {
+                    if (rootsX[i] > 0.0 && rootsX[i] < 1.0) testT.push(rootsX[i]);
+                }
+
+                var ay:Number = 3.0 * (p3.y - 3.0 * p2.y + 3.0 * p1.y - p0.y);
+                var by:Number = 6.0 * (p2.y - 2.0 * p1.y + p0.y);
+                var cy:Number = 3.0 * (p1.y - p0.y);
+                var rootsY:Array = MathUtil.solveQuadratic(ay, by, cy);
+                for (var j:int = 0; j < rootsY.length; j++)
+                {
+                    if (rootsY[j] > 0.0 && rootsY[j] < 1.0) testT.push(rootsY[j]);
+                }
+            }
+
+            var pt0:Point2D = pointAt(testT[0]);
+            var minX:Number = pt0.x;
+            var maxX:Number = pt0.x;
+            var minY:Number = pt0.y;
+            var maxY:Number = pt0.y;
+
+            for (var k:int = 1; k < testT.length; k++)
+            {
+                var pt:Point2D = pointAt(testT[k]);
+                if (pt.x < minX) minX = pt.x;
+                if (pt.x > maxX) maxX = pt.x;
+                if (pt.y < minY) minY = pt.y;
+                if (pt.y > maxY) maxY = pt.y;
+            }
+
+            return new Rect2D(minX, minY, maxX - minX, maxY - minY);
+        }
+
         public function clone():Object
         {
             return new Bezier2D(p0, p1, p2, p3);
