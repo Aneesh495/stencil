@@ -25,12 +25,49 @@ package stencil.format
 
         protected var _objects:Array; // Array of String content
         protected var _pageContent:Array; // Array of PDF operator strings
+        protected var _pages:Array; // Array of page objects
+        protected var _fonts:Object; // fontName -> font object
+        protected var _compressStreams:Boolean;
 
         public function PDFDocument(pageWidth:Number = 612.0, pageHeight:Number = 792.0) // US Letter default
         {
             this.pageWidth = pageWidth;
             this.pageHeight = pageHeight;
             _objects = [];
+            _pageContent = [];
+            _pages = [];
+            _fonts = {};
+            _compressStreams = false;
+        }
+
+        public function get pageCount():int
+        {
+            return Math.max(1, _pages.length);
+        }
+
+        public function set compressStreams(val:Boolean):void
+        {
+            _compressStreams = val;
+        }
+
+        /**
+         * Adds an embedded font dictionary entry to document resources.
+         */
+        public function registerFont(fontName:String, baseFont:String = "Helvetica"):void
+        {
+            _fonts[fontName] = baseFont;
+        }
+
+        /**
+         * Finalizes current page content and initiates a new blank page.
+         */
+        public function newPage(w:Number = -1, h:Number = -1):void
+        {
+            _pages.push({
+                width: (w > 0) ? w : pageWidth,
+                height: (h > 0) ? h : pageHeight,
+                content: _pageContent.slice()
+            });
             _pageContent = [];
         }
 
