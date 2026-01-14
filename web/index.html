@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stencil Studio - 2D Vector Document & Computational Geometry Workbench</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Top Header -->
+    <header id="header">
+      <div class="logo">
+        <span class="logo-mark">&#9671;</span>
+        <span class="logo-text">STENCIL</span>
+        <span class="version-tag">v1.0.0-as3</span>
+      </div>
+      <div class="header-controls">
+        <div class="mode-tabs">
+          <button class="tab-btn active" data-mode="bezier">Bezier Geometry</button>
+          <button class="tab-btn" data-mode="cassowary">Cassowary Solver</button>
+          <button class="tab-btn" data-mode="clipper">Polygon Clipper</button>
+          <button class="tab-btn" data-mode="delaunay">Delaunay &amp; Voronoi</button>
+          <button class="tab-btn" data-mode="crdt">CRDTree Sync</button>
+        </div>
+        <div class="action-buttons">
+          <button id="btn-export-svg" class="action-btn">Export SVG</button>
+          <button id="btn-reset-view" class="action-btn">Reset View</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div id="workspace">
+      <!-- Left Sidebar: Parameters & Inspector -->
+      <aside id="sidebar">
+        <div class="panel-header">INSPECTOR &amp; CONTROLS</div>
+        
+        <!-- Bezier Controls -->
+        <div id="controls-bezier" class="control-group">
+          <h3>Cubic Bezier Calculus</h3>
+          <p class="desc">Interactive 5-point Gauss-Legendre quadrature arc length, de Casteljau subdivision, and curvature roots.</p>
+          <label>Subdivision Depth: <span id="val-subdiv">4</span></label>
+          <input type="range" id="input-subdiv" min="1" max="8" value="4">
+          
+          <div class="checkbox-row">
+            <input type="checkbox" id="check-curvature" checked>
+            <label for="check-curvature">Show Curvature Comb</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="check-bounds" checked>
+            <label for="check-bounds">Show Tight Extrema AABB</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="check-hull" checked>
+            <label for="check-hull">Show Control Polygon</label>
+          </div>
+
+          <div class="metrics-card">
+            <div class="metric"><span class="m-label">Arc Length:</span> <span id="metric-arc-len" class="m-val">0.00 px</span></div>
+            <div class="metric"><span class="m-label">Roots Count:</span> <span id="metric-roots" class="m-val">2</span></div>
+            <div class="metric"><span class="m-label">Segments:</span> <span id="metric-segs" class="m-val">16</span></div>
+          </div>
+        </div>
+
+        <!-- Cassowary Controls -->
+        <div id="controls-cassowary" class="control-group hidden">
+          <h3>Cassowary Simplex Layout</h3>
+          <p class="desc">Two-box balanced container layout solved via dual-simplex tableau pivoting with stay and edit constraints.</p>
+          
+          <label>Container Width: <span id="val-cass-width">600</span> px</label>
+          <input type="range" id="input-cass-width" min="300" max="900" value="600">
+          
+          <label>Left Box Weight: <span id="val-cass-split">50</span>%</label>
+          <input type="range" id="input-cass-split" min="10" max="90" value="50">
+
+          <div class="metrics-card">
+            <div class="metric"><span class="m-label">Tableau Rows:</span> <span class="m-val">8</span></div>
+            <div class="metric"><span class="m-label">Tableau Cols:</span> <span class="m-val">14</span></div>
+            <div class="metric"><span class="m-label">Solve Time:</span> <span class="m-val">&lt; 0.12 ms</span></div>
+          </div>
+        </div>
+
+        <!-- Polygon Clipper Controls -->
+        <div id="controls-clipper" class="control-group hidden">
+          <h3>Greiner-Hormann Boolean Ops</h3>
+          <p class="desc">Arbitrary subject and clip polygon boolean intersection, union, and difference clipping.</p>
+          <div class="radio-group">
+            <label><input type="radio" name="clip-op" value="intersection" checked> Intersection</label>
+            <label><input type="radio" name="clip-op" value="union"> Union</label>
+            <label><input type="radio" name="clip-op" value="difference"> Difference (Sub - Clip)</label>
+            <label><input type="radio" name="clip-op" value="xor"> Exclusive OR</label>
+          </div>
+          <button id="btn-clip-randomize" class="action-btn secondary">Randomize Shapes</button>
+        </div>
+
+        <!-- Delaunay Controls -->
+        <div id="controls-delaunay" class="control-group hidden">
+          <h3>Bowyer-Watson Delaunay &amp; Voronoi</h3>
+          <p class="desc">Incremental Delaunay triangulation with circumcircle criterion and dual Voronoi cell graph extraction.</p>
+          <div class="checkbox-row">
+            <input type="checkbox" id="check-delaunay-tri" checked>
+            <label for="check-delaunay-tri">Show Delaunay Triangles</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="check-voronoi-cells" checked>
+            <label for="check-voronoi-cells">Show Voronoi Cells</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="check-circumcircles">
+            <label for="check-circumcircles">Show Circumcircles</label>
+          </div>
+          <button id="btn-delaunay-add" class="action-btn secondary">Add 10 Random Points</button>
+          <button id="btn-delaunay-clear" class="action-btn secondary">Reset Points</button>
+        </div>
+
+        <!-- CRDT Controls -->
+        <div id="controls-crdt" class="control-group hidden">
+          <h3>CRDTree Multi-Peer Replication</h3>
+          <p class="desc">Replicated vector scene tree with causal vector clocks, Lamport timestamps, and cycle prevention.</p>
+          <div class="metrics-card">
+            <div class="metric"><span class="m-label">Peer A Clock:</span> <span id="metric-clock-a" class="m-val">[0, 0]</span></div>
+            <div class="metric"><span class="m-label">Peer B Clock:</span> <span id="metric-clock-b" class="m-val">[0, 0]</span></div>
+            <div class="metric"><span class="m-label">Nodes Replicated:</span> <span id="metric-crdt-nodes" class="m-val">6</span></div>
+          </div>
+          <button id="btn-crdt-mutate-a" class="action-btn secondary">Peer A: Move Circle</button>
+          <button id="btn-crdt-mutate-b" class="action-btn secondary">Peer B: Move Rectangle</button>
+          <button id="btn-crdt-sync" class="action-btn primary">Simulate Network Sync</button>
+        </div>
+
+        <!-- Canvas Status -->
+        <div class="status-panel">
+          <div class="status-title">VIEWPORT METRICS</div>
+          <div>Zoom: <span id="status-zoom">100%</span></div>
+          <div>Pan: <span id="status-pan">0, 0</span></div>
+          <div>FPS: <span id="status-fps">60</span></div>
+        </div>
+      </aside>
+
+      <!-- Center Canvas Viewport -->
+      <main id="viewport-container">
+        <canvas id="stage-canvas"></canvas>
+        <div id="canvas-overlay-hints">
+          <span>Click &amp; Drag handles or control points | Hold Space + Drag to Pan | Scroll to Zoom</span>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
